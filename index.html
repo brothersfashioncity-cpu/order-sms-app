@@ -1,0 +1,830 @@
+html
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>প্রিন্টিং শপ - অর্ডার ও SMS ম্যানেজমেন্ট</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font (Hind Siliguri for Bengali) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Hind Siliguri', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Hind Siliguri', sans-serif;
+            background-color: #f8fafc;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Header / Navbar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo & Title -->
+                <div class="flex items-center space-x-3 space-x-reverse">
+                    <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-blue-500/20">
+                        <i class="fa-solid font-bold fa-print"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg text-slate-900 leading-tight">প্রিন্টিং প্যানেল</h1>
+                        <p class="text-xs text-slate-500">অর্ডার, মেমো ও SMS ম্যানেজমেন্ট</p>
+                    </div>
+                </div>
+
+                <!-- Header Actions -->
+                <div class="flex items-center space-x-2 sm:space-x-3">
+                    <button id="openTrackerBtn" class="flex items-center space-x-2 space-x-reverse px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-sm font-medium transition">
+                        <i class="fa-solid fa-magnifying-glass-location"></i>
+                        <span class="hidden sm:inline">কাস্টমার ট্র্যাকিং</span>
+                    </button>
+                    <button id="openApiSettingsBtn" class="flex items-center space-x-2 space-x-reverse px-3 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium transition">
+                        <i class="fa-solid fa-sliders text-blue-600"></i>
+                        <span class="hidden sm:inline">API সেটআপ</span>
+                    </button>
+                    <button id="openHistoryBtn" class="flex items-center space-x-2 space-x-reverse px-3 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium transition">
+                        <i class="fa-solid fa-clock-rotate-left text-blue-600"></i>
+                        <span class="hidden sm:inline">SMS হিস্ট্রি</span>
+                    </button>
+                    <button id="openNewOrderModalBtn" class="flex items-center space-x-2 space-x-reverse px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-md shadow-blue-500/20 transition">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>নতুন অর্ডার</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Notification Toast Container -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        
+        <!-- Stats Summary Header -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">মোট অর্ডার</p>
+                    <h3 id="statTotalOrders" class="text-2xl font-bold text-slate-800 mt-1">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+                    <i class="fa-solid fa-box-archive"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">প্রিন্টিং চলছে</p>
+                    <h3 id="statPrintingOrders" class="text-2xl font-bold text-amber-600 mt-1">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <i class="fa-solid fa-spinner animate-spin"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">ডেলিভারির জন্য তৈরি</p>
+                    <h3 id="statReadyOrders" class="text-2xl font-bold text-blue-600 mt-1">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <i class="fa-solid fa-truck-ramp-box"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">ডেলিভারি সম্পন্ন</p>
+                    <h3 id="statCompletedOrders" class="text-2xl font-bold text-emerald-600 mt-1">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search, Filter & Tools Bar -->
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
+            <!-- Search input -->
+            <div class="relative w-full md:w-80">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="searchInput" placeholder="মেমো নম্বর, নাম বা মোবাইল নম্বর খুঁজুন..." 
+                    class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+            </div>
+
+            <!-- Filter Buttons -->
+            <div class="flex items-center space-x-1 space-x-reverse overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
+                <button class="filter-btn active px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white transition" data-status="all">সবগুলো</button>
+                <button class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition" data-status="গ্রহন করা হয়েছে">গৃহীত</button>
+                <button class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition" data-status="প্রিন্ট এ পাঠানো হয়েছে">প্রিন্টিং</button>
+                <button class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition" data-status="ডেলিভারী প্রস্তুত">প্রস্তুত</button>
+                <button class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition" data-status="ডেলিভারী সফল">সম্পন্ন</button>
+            </div>
+        </div>
+
+        <!-- Orders Grid Container -->
+        <div id="ordersContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Dynamic order cards will be rendered here -->
+        </div>
+
+        <!-- Empty State UI -->
+        <div id="emptyState" class="hidden bg-white border border-dashed border-slate-300 rounded-2xl p-12 text-center my-8">
+            <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-box-open text-2xl"></i>
+            </div>
+            <h3 class="text-base font-bold text-slate-700">কোনো অর্ডার পাওয়া যায়নি</h3>
+            <p class="text-sm text-slate-500 mt-1">নতুন একটি অর্ডার যোগ করতে নিচের বাটনে ক্লিক করুন</p>
+            <button onclick="document.getElementById('openNewOrderModalBtn').click()" class="mt-4 inline-flex items-center space-x-2 space-x-reverse px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition">
+                <i class="fa-solid fa-plus"></i>
+                <span>নতুন অর্ডার তৈরি করুন</span>
+            </button>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+            কাস্টম প্রিন্টিং শপ - SMS অটোমেশন ও অর্ডার ম্যানেজমেন্ট সিস্টেম &copy; 2026
+        </div>
+    </footer>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- 1. New Order Modal -->
+    <div id="newOrderModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+            <div class="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800 text-lg flex items-center space-x-2 space-x-reverse">
+                    <i class="fa-solid fa-circle-plus text-blue-600"></i>
+                    <span>নতুন কাস্টম প্রিন্ট অর্ডার</span>
+                </h3>
+                <button type="button" class="closeModalBtn text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <form id="addOrderForm" class="p-4 sm:p-6 overflow-y-auto space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">মেমো নম্বর <span class="text-rose-500">*</span></label>
+                        <input type="text" id="memoNo" required placeholder="MEMO-1001" 
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono font-bold text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">কাস্টমারের নাম <span class="text-rose-500">*</span></label>
+                        <input type="text" id="custName" required placeholder="যেমন: মো: রফিকুল ইসলাম" 
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">মোবাইল নম্বর <span class="text-rose-500">*</span></label>
+                    <input type="tel" id="custPhone" required placeholder="017XXXXXXXX" pattern="[0-9]{11}"
+                        class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">প্রিন্ট এর ধরন <span class="text-rose-500">*</span></label>
+                    <select id="printType" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="টেক্সট/লেখা">টেক্সট/লেখা (যেমন: কাস্টম মেসেজ বা লেখা)</option>
+                        <option value="নাম ও নাম্বার">নাম ও নাম্বার (টিশার্ট বা জার্সি প্রিন্ট)</option>
+                        <option value="অন্যান্য প্রিন্ট ছবি / লোগো">অন্যান্য (প্রিন্ট ছবি / লোগো)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">প্রিন্টের বিস্তারিত তথ্য / কাস্টম নোট (ছবি, লোগো, নাম ইত্যাদি)</label>
+                    <textarea id="printDetails" rows="3" placeholder="প্রিন্টে কি লেখা থাকবে, নাম-নাম্বার, সাইজ, লোগো পজিশন বা বিশেষ নির্দেশাবলী..." 
+                        class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+
+                <div class="pt-2 flex justify-end space-x-3 space-x-reverse border-t border-slate-100">
+                    <button type="button" class="closeModalBtn px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition">বাতিল</button>
+                    <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-md shadow-blue-500/20 transition">অর্ডার সেভ করুন</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. Send SMS Confirmation Modal -->
+    <div id="smsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100">
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800 text-base flex items-center space-x-2 space-x-reverse">
+                    <i class="fa-solid fa-paper-plane text-blue-600"></i>
+                    <span>SMS নিশ্চিতকরণ</span>
+                </h3>
+                <button type="button" class="closeSmsModalBtn text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-5 space-y-4">
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                    <div class="flex justify-between text-xs text-slate-500 mb-1">
+                        <span>প্রাপক:</span>
+                        <span id="smsModalCustName" class="font-semibold text-slate-700"></span>
+                    </div>
+                    <div class="flex justify-between text-xs text-slate-500">
+                        <span>ফোন নাম্বার:</span>
+                        <span id="smsModalCustPhone" class="font-mono font-bold text-blue-600"></span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">মেসেজ কন্টেন্ট (সম্পাদনাযোগ্য):</label>
+                    <textarea id="smsTextContent" rows="4" 
+                        class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-sans focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 leading-relaxed"></textarea>
+                    <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                        <span id="smsCharCount">০ অক্ষর</span>
+                        <span>১ টি SMS গণনা করা হবে</span>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-amber-50 rounded-lg border border-amber-200 text-xs text-amber-800 flex items-start space-x-2 space-x-reverse">
+                    <i class="fa-solid fa-circle-info text-amber-600 mt-0.5"></i>
+                    <span>বাটনে ক্লিক করলে আপনার সেভ করা SMS API এর মাধ্যমে মেসেজটি গ্রাহকের মোবাইলে চলে যাবে।</span>
+                </div>
+
+                <div class="flex justify-end space-x-3 space-x-reverse pt-2">
+                    <button type="button" class="closeSmsModalBtn px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50">বাতিল</button>
+                    <button id="confirmSendSmsBtn" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold shadow-md shadow-emerald-500/20 flex items-center space-x-2 space-x-reverse transition">
+                        <i class="fa-solid fa-paper-plane"></i>
+                        <span>SMS পাঠাও</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. API Settings Modal -->
+    <div id="apiSettingsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100">
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800 text-base flex items-center space-x-2 space-x-reverse">
+                    <i class="fa-solid fa-gear text-blue-600"></i>
+                    <span>SMS Gateway API কনফিগারেশন</span>
+                </h3>
+                <button type="button" class="closeApiModalBtn text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="apiSettingsForm" class="p-5 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">SMS API URL</label>
+                    <input type="url" id="apiEndpoint" placeholder="https://api.sms-provider.com/send"
+                        class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">API Key / Token</label>
+                    <input type="text" id="apiKey" placeholder="আপনার দেওয়া API Key লিখুন"
+                        class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Sender ID / Masking</label>
+                    <input type="text" id="apiSenderId" placeholder="যেমন: BRANDNAME"
+                        class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div class="p-3 bg-blue-50 rounded-lg text-xs text-blue-800">
+                    <p class="font-semibold mb-0.5"><i class="fa-solid fa-lightbulb"></i> টিপস:</p>
+                    <p>এখানকার তথ্যাদি ব্রাউজারের LocalStorage এ সুরক্ষিতভাবে জমা থাকবে। প্রকৃত SMS পাঠাতে এটি ব্যবহৃত হবে। (বর্তমানে ডেমো সিমুলেশন মোডে সক্রিয়)</p>
+                </div>
+
+                <div class="flex justify-end space-x-3 space-x-reverse pt-2">
+                    <button type="button" class="closeApiModalBtn px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50">বন্ধ করুন</button>
+                    <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-md shadow-blue-500/20 transition">সেটিং সেভ করুন</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 4. SMS History Modal -->
+    <div id="historyModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[85vh]">
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800 text-base flex items-center space-x-2 space-x-reverse">
+                    <i class="fa-solid fa-list-check text-blue-600"></i>
+                    <span>প্ররিত SMS এর ইতিহাস (Logs)</span>
+                </h3>
+                <button type="button" class="closeHistoryModalBtn text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-4 overflow-y-auto flex-grow">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
+                            <tr>
+                                <th class="p-2.5 text-right">সময়</th>
+                                <th class="p-2.5 text-right">কাস্টমার</th>
+                                <th class="p-2.5 text-right">নম্বর</th>
+                                <th class="p-2.5 text-right">মেসেজ</th>
+                                <th class="p-2.5 text-center">স্ট্যাটাস</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" class="divide-y divide-slate-100">
+                            <!-- History items rendered dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="emptyHistory" class="text-center py-8 text-slate-400 text-sm hidden">
+                    এখনো কোনো SMS পাঠানো হয়নি।
+                </div>
+            </div>
+
+            <div class="p-3 border-t border-slate-100 bg-slate-50 flex justify-between items-center text-xs text-slate-500">
+                <span id="historyCountText">মোট ০টি মেসেজ পাওয়া গেছে</span>
+                <button id="clearHistoryBtn" class="text-rose-600 hover:text-rose-800 font-semibold">হিস্ট্রি মুছুন</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- JavaScript App Logic -->
+    <script>
+        // State Management & LocalStorage setup
+        const STORAGE_KEY_ORDERS = 'print_shop_orders';
+        const STORAGE_KEY_SMS_LOGS = 'print_shop_sms_logs';
+    <!-- 5. Customer Public Tracking Modal -->
+    <div id="trackerModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800 text-base flex items-center space-x-2 space-x-reverse">
+                    <i class="fa-solid fa-magnifying-glass-location text-emerald-600"></i>
+                    <span>কাস্টমার অর্ডার ট্র্যাকিং (Customer View)</span>
+                </h3>
+                <button type="button" class="closeTrackerModalBtn text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-5 space-y-4 overflow-y-auto">
+                <div class="flex space-x-2 space-x-reverse">
+                    <input type="text" id="trackInput" placeholder="মেমো নম্বর (যেমন: MEMO-1001) বা ফোন নম্বর" 
+                        class="flex-grow px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    <button id="searchTrackBtn" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition">
+                        খুঁজুন
+                    </button>
+                </div>
+
+                <div id="trackResultContainer" class="hidden space-y-4 pt-2">
+                    <!-- Dynamic tracking details displayed here -->
+                </div>
+
+                <div id="trackNotFound" class="hidden text-center py-6 text-slate-400 text-sm">
+                    কোনো অর্ডার পাওয়া যায়নি। সঠিক মেমো নম্বর বা মোবাইল নম্বর দিন।
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. Printable Customer Memo Modal -->
+    <div id="memoModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100">
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 print:hidden">
+                <h3 class="font-bold text-slate-800 text-sm flex items-center space-x-2 space-x-reverse">
+                    <i class="fa-solid fa-receipt text-blue-600"></i>
+                    <span>কাস্টমার ক্যাশ মেমো</span>
+                </h3>
+                <div class="flex items-center space-x-2 space-x-reverse">
+                    <button onclick="window.print()" class="px-3 py-1 bg-blue-600 text-white rounded text-xs font-semibold hover:bg-blue-700">
+                        <i class="fa-solid fa-print"></i> প্রিন্ট
+                    </button>
+                    <button type="button" class="closeMemoModalBtn text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="printableMemoArea" class="p-6 space-y-4 bg-white text-slate-800 text-xs">
+                <div class="text-center border-b pb-3">
+                    <h2 class="text-base font-bold text-slate-900 uppercase tracking-wide">কাস্টম প্রিন্টিং শপ</h2>
+                    <p class="text-[11px] text-slate-500">ঢাকা, বাংলাদেশ | মোবাইল: 01700000000</p>
+                    <div class="inline-block mt-2 px-3 py-0.5 rounded-full bg-slate-100 text-slate-700 font-mono font-bold text-[11px]">
+                        ক্যাশ মেমো / অর্ডার স্লিপ
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-[11px]">
+                    <div>
+                        <span class="text-slate-500 block">মেমো নম্বর:</span>
+                        <strong id="memoModalNo" class="font-mono text-blue-600 text-sm"></strong>
+                    </div>
+                    <div class="text-left">
+                        <span class="text-slate-500 block">তারিখ:</span>
+                        <strong id="memoModalDate" class="text-slate-700"></strong>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 block">গ্রাহকের নাম:</span>
+                        <strong id="memoModalName" class="text-slate-800"></strong>
+                    </div>
+                    <div class="text-left">
+                        <span class="text-slate-500 block">মোবাইল:</span>
+                        <strong id="memoModalPhone" class="font-mono text-slate-800"></strong>
+                    </div>
+                </div>
+
+                <div class="border rounded-lg p-3 bg-slate-50/50 space-y-2">
+                    <div class="flex justify-between border-b pb-1">
+                        <span class="font-semibold text-slate-600">প্রিন্ট এর ধরন:</span>
+                        <span id="memoModalType" class="font-bold text-slate-800"></span>
+                    </div>
+                    <div>
+                        <span class="font-semibold text-slate-600 block mb-1">প্রিন্ট তথ্য (নাম/নাম্বার/লোগো বিবরণ):</span>
+                        <p id="memoModalDetails" class="text-slate-700 whitespace-pre-line bg-white p-2 rounded border border-slate-200"></p>
+                    </div>
+                </div>
+
+                <div class="border-t pt-3 flex justify-between items-center text-[10px] text-slate-400">
+                    <span>অর্ডার স্ট্যাটাস ট্র্যাক করতে QR বা লিংক ব্যবহার করুন</span>
+                    <span class="font-semibold text-slate-600">স্বাক্ষর: _____________</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript App Logic -->
+    <script>
+        // State Management & LocalStorage setup
+        const STORAGE_KEY_ORDERS = 'print_shop_orders';
+        const STORAGE_KEY_SMS_LOGS = 'print_shop_sms_logs';
+        const STORAGE_KEY_API_CONFIG = 'print_shop_api_config';
+
+        // Pre-configured SMS Templates requested by user with dynamic Memo & Tracking Link
+        const SMS_TEMPLATES = [
+            { id: 1, label: "অর্ডার গৃহিত", text: "আপনার মেমো #{MEMO} গ্রহন করা হয়েছে। প্রডাক্ট প্রিন্ট এর কাজ দ্রুত শুরু হবে। ট্র্যাক করুন: {LINK}", icon: "fa-clipboard-check", status: "গ্রহন করা হয়েছে", bg: "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100" },
+            { id: 2, label: "প্রিন্ট শুরু", text: "আপনার মেমো #{MEMO} এর প্রডাক্ট প্রিন্ট এর জন্য পাঠানো হয়েছে। ট্র্যাক করুন: {LINK}", icon: "fa-print", status: "প্রিন্ট এ পাঠানো হয়েছে", bg: "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100" },
+            { id: 3, label: "প্রিন্ট সম্পন্ন", text: "আপনার মেমো #{MEMO} এর প্রডাক্ট সফল ভাবে প্রিন্ট শেষ হয়েছে। ট্র্যাক করুন: {LINK}", icon: "fa-circle-check", status: "প্রিন্টিং শেষ", bg: "bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100" },
+            { id: 4, label: "রিসিভ এর জন্য প্রস্তুত", text: "আপনার মেমো #{MEMO} এর প্রডাক্ট রিসিভ করে নিয়ে যেতে পারেন। আমাদের শপে স্বাগতম।", icon: "fa-store", status: "রিসিভ করুন", bg: "bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100" },
+            { id: 5, label: "ডেলিভারী প্রস্তুত", text: "আপনার মেমো #{MEMO} এর প্রডাক্ট ডেলেভারী এর জন্য প্রস্তুত। কুরিয়ারে হস্তান্তর করা হচ্ছে।", icon: "fa-truck-fast", status: "ডেলিভারী প্রস্তুত", bg: "bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100" },
+            { id: 6, label: "ডেলিভারী সফল", text: "আপনার মেমো #{MEMO} এর প্রডাক্ট ডেলেভারী সফল। কেনাকাটার জন্য আপনাকে অসংখ্য ধন্যবাদ!", icon: "fa-box-circle-check", status: "ডেলিভারী সফল", bg: "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100" }
+        ];
+
+        // Demo Initial Data
+        const SAMPLE_ORDERS = [
+            {
+                id: "ORD-" + Math.floor(1000 + Math.random() * 9000),
+                memoNo: "MEMO-1001",
+                customerName: "আব্দুল্লাহ আল মামুন",
+                customerPhone: "01712345678",
+                printType: "নাম ও নাম্বার",
+                printDetails: "টিশার্ট ব্যাক সাইড: MAMUN, জার্সি নম্বর: 10, সাইজ: L, প্রিন্ট কালার: গোল্ডেন",
+                status: "প্রিন্ট এ পাঠানো হয়েছে",
+                date: new Date().toISOString()
+            },
+            {
+                id: "ORD-" + Math.floor(1000 + Math.random() * 9000),
+                memoNo: "MEMO-1002",
+                customerName: "সুমন হোসেন",
+                customerPhone: "01987654321",
+                printType: "অন্যান্য প্রিন্ট ছবি / লোগো",
+                printDetails: "কোম্পানি লোগো প্রিন্ট (ফ্রন্ট পকেট), ৫০০ পিস কাস্টম ব্যাগ",
+                status: "গ্রহন করা হয়েছে",
+                date: new Date(Date.now() - 3600000 * 4).toISOString()
+            }
+        ];
+
+        let orders = JSON.parse(localStorage.getItem(STORAGE_KEY_ORDERS)) || SAMPLE_ORDERS;
+        let smsLogs = JSON.parse(localStorage.getItem(STORAGE_KEY_SMS_LOGS)) || [];
+        let apiConfig = JSON.parse(localStorage.getItem(STORAGE_KEY_API_CONFIG)) || {
+            endpoint: 'https://api.sms-gateway-provider.com/send',
+            apiKey: 'DEMO_API_KEY_12345',
+            senderId: 'PRINTSHOP'
+        };
+
+        let currentSmsTarget = null;
+        let currentFilter = 'all';
+        let searchQuery = '';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderOrders();
+            updateStats();
+            initApiSettingsForm();
+            generateNextMemoNo();
+
+            // Event Listeners for Filter Buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-btn').forEach(b => {
+                        b.classList.remove('bg-blue-600', 'text-white', 'active');
+                        b.classList.add('bg-slate-100', 'text-slate-600');
+                    });
+                    btn.classList.remove('bg-slate-100', 'text-slate-600');
+                    btn.classList.add('bg-blue-600', 'text-white', 'active');
+                    currentFilter = btn.dataset.status;
+                    renderOrders();
+                });
+            });
+
+            // Search Filter Listener
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                searchQuery = e.target.value.toLowerCase().trim();
+                renderOrders();
+            });
+
+            // Character count listener in SMS modal
+            document.getElementById('smsTextContent').addEventListener('input', (e) => {
+                const len = e.target.value.length;
+                document.getElementById('smsCharCount').innerText = `${len} অক্ষর`;
+            });
+
+            // Customer Order Search/Tracker Trigger
+            document.getElementById('searchTrackBtn').addEventListener('click', performTrackSearch);
+        });
+
+        function generateNextMemoNo() {
+            const nextNo = 1000 + orders.length + 1;
+            document.getElementById('memoNo').value = `MEMO-${nextNo}`;
+        }
+
+        function saveOrders() {
+            localStorage.setItem(STORAGE_KEY_ORDERS, JSON.stringify(orders));
+            updateStats();
+        }
+
+        function saveSmsLogs() {
+            localStorage.setItem(STORAGE_KEY_SMS_LOGS, JSON.stringify(smsLogs));
+        }
+
+        // Render Orders List
+        function renderOrders() {
+            const container = document.getElementById('ordersContainer');
+            const emptyState = document.getElementById('emptyState');
+            container.innerHTML = '';
+
+            let filtered = orders.filter(order => {
+                const matchesFilter = (currentFilter === 'all') || (order.status === currentFilter);
+                const matchesSearch = order.customerName.toLowerCase().includes(searchQuery) || 
+                                      order.customerPhone.includes(searchQuery) ||
+                                      (order.memoNo && order.memoNo.toLowerCase().includes(searchQuery)) ||
+                                      order.id.toLowerCase().includes(searchQuery);
+                return matchesFilter && matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filtered.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(order => {
+                const card = document.createElement('div');
+                card.className = "bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between";
+
+                let statusBadgeClass = "bg-slate-100 text-slate-700";
+                if(order.status.includes("গ্রহন")) statusBadgeClass = "bg-blue-50 text-blue-700 border-blue-200";
+                else if(order.status.includes("প্রিন্ট")) statusBadgeClass = "bg-amber-50 text-amber-700 border-amber-200";
+                else if(order.status.includes("প্রস্তুত") || order.status.includes("রিসিভ")) statusBadgeClass = "bg-purple-50 text-purple-700 border-purple-200";
+                else if(order.status.includes("সফল")) statusBadgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+
+                card.innerHTML = `
+                    <div>
+                        <!-- Header Memo No & Status -->
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <span class="font-mono text-xs font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">${order.memoNo || order.id}</span>
+                                <h3 class="font-bold text-slate-800 text-base leading-snug mt-1.5">${escapeHtml(order.customerName)}</h3>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-[11px] font-semibold border ${statusBadgeClass}">
+                                ${order.status}
+                            </span>
+                        </div>
+
+                        <!-- Customer Contact Info -->
+                        <div class="flex items-center space-x-2 space-x-reverse text-xs text-slate-600 mb-3 bg-slate-50 p-2 rounded-lg">
+                            <i class="fa-solid fa-phone text-blue-600"></i>
+                            <span class="font-mono font-semibold">${order.customerPhone}</span>
+                            <button onclick="openPrintMemo('${order.id}')" class="mr-auto text-slate-600 hover:text-blue-600 p-1 font-semibold flex items-center space-x-1 space-x-reverse" title="ক্যাশ মেমো প্রিন্ট করুন">
+                                <i class="fa-solid fa-receipt text-blue-600"></i>
+                                <span class="text-[10px]">মেমো</span>
+                            </button>
+                        </div>
+
+                        <!-- Print Details Section -->
+                        <div class="space-y-2 mb-4">
+                            <div class="flex items-center text-xs text-slate-500 font-medium">
+                                <i class="fa-solid fa-tag text-slate-400 ml-1"></i>
+                                <span>ধরন: <strong class="text-slate-700 font-semibold">${order.printType}</strong></span>
+                            </div>
+                            
+                            ${order.printDetails ? `
+                            <div class="bg-slate-50/80 border border-slate-100 p-2.5 rounded-lg text-xs text-slate-700">
+                                <span class="font-semibold text-slate-500 block mb-0.5">প্রিন্টের বিবরণ (নাম/নাম্বার/লোগো):</span>
+                                <p class="whitespace-pre-line leading-relaxed">${escapeHtml(order.printDetails)}</p>
+                            </div>` : ''}
+                        </div>
+                    </div>
+
+                    <!-- SMS Fast Action Buttons -->
+                    <div class="pt-3 border-t border-slate-100 mt-2">
+                        <p class="text-[11px] font-bold text-slate-400 mb-2 flex items-center justify-between">
+                            <span>SMS অটোমেশন (লিংক সহ):</span>
+                            <i class="fa-solid fa-comment-sms text-blue-500"></i>
+                        </p>
+                        <div class="grid grid-cols-2 gap-1.5">
+                            ${SMS_TEMPLATES.map(tpl => `
+                                <button onclick="openSmsPreview('${order.id}', ${tpl.id})" 
+                                    class="flex items-center text-right text-[11px] font-semibold p-2 rounded-lg border transition ${tpl.bg}">
+                                    <i class="fa-solid ${tpl.icon} text-xs ml-1.5 opacity-80"></i>
+                                    <span class="truncate">${tpl.label}</span>
+                                </button>
+                            `).join('')}
+                        </div>
+
+                        <!-- Card Options Footer -->
+                        <div class="flex justify-between items-center mt-3 pt-2 text-[11px] text-slate-400">
+                            <span>${new Date(order.date).toLocaleDateString('bn-BD', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                            <button onclick="deleteOrder('${order.id}')" class="text-rose-500 hover:text-rose-700 font-medium flex items-center space-x-1 space-x-reverse">
+                                <i class="fa-solid fa-trash-can"></i>
+                                <span>মুছে ফেলুন</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Trigger SMS Preview Modal with Dynamic Memo & Track Link Replacement
+        function openSmsPreview(orderId, templateId) {
+            const order = orders.find(o => o.id === orderId);
+            const template = SMS_TEMPLATES.find(t => t.id === templateId);
+
+            if (!order || !template) return;
+
+            currentSmsTarget = {
+                orderId: order.id,
+                statusToUpdate: template.status,
+                phone: order.customerPhone,
+                name: order.customerName,
+                memoNo: order.memoNo || order.id
+            };
+
+            const trackLink = `${window.location.origin}${window.location.pathname}?track=${order.memoNo || order.id}`;
+            let processedText = template.text
+                .replace('{MEMO}', order.memoNo || order.id)
+                .replace('{LINK}', trackLink);
+
+            document.getElementById('smsModalCustName').innerText = order.customerName;
+            document.getElementById('smsModalCustPhone').innerText = order.customerPhone;
+            
+            const textarea = document.getElementById('smsTextContent');
+            textarea.value = processedText;
+            document.getElementById('smsCharCount').innerText = `${processedText.length} অক্ষর`;
+
+            document.getElementById('smsModal').classList.remove('hidden');
+        }
+
+        // Printable Memo Generator
+        function openPrintMemo(orderId) {
+            const order = orders.find(o => o.id === orderId);
+            if(!order) return;
+
+            document.getElementById('memoModalNo').innerText = order.memoNo || order.id;
+            document.getElementById('memoModalDate').innerText = new Date(order.date).toLocaleDateString('bn-BD');
+            document.getElementById('memoModalName').innerText = order.customerName;
+            document.getElementById('memoModalPhone').innerText = order.customerPhone;
+            document.getElementById('memoModalType').innerText = order.printType;
+            document.getElementById('memoModalDetails').innerText = order.printDetails || 'কোনো বিবরণ নেই';
+
+            document.getElementById('memoModal').classList.remove('hidden');
+        }
+
+        // Perform Customer Order Track Search
+        function performTrackSearch() {
+            const query = document.getElementById('trackInput').value.trim().toLowerCase();
+            const container = document.getElementById('trackResultContainer');
+            const notFound = document.getElementById('trackNotFound');
+
+            container.innerHTML = '';
+            if(!query) return;
+
+            const foundOrders = orders.filter(o => 
+                (o.memoNo && o.memoNo.toLowerCase() === query) || 
+                o.customerPhone === query ||
+                o.id.toLowerCase() === query
+            );
+
+            if(foundOrders.length === 0) {
+                container.classList.add('hidden');
+                notFound.classList.remove('hidden');
+                return;
+            }
+
+            notFound.classList.add('hidden');
+            container.classList.remove('hidden');
+
+            foundOrders.forEach(ord => {
+                const card = document.createElement('div');
+                card.className = "p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3";
+                card.innerHTML = `
+                    <div class="flex justify-between items-center border-b pb-2">
+                        <span class="font-mono font-bold text-blue-600 text-sm">${ord.memoNo || ord.id}</span>
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">${ord.status}</span>
+                    </div>
+                    <div class="text-xs space-y-1">
+                        <p><strong>গ্রাহকের নাম:</strong> ${escapeHtml(ord.customerName)}</p>
+                        <p><strong>প্রিন্ট এর ধরন:</strong> ${ord.printType}</p>
+                        <p><strong>প্রিন্ট বিবরণ:</strong> ${escapeHtml(ord.printDetails || 'N/A')}</p>
+                    </div>
+                    <div class="pt-2 border-t text-[11px] text-slate-400">
+                        তারিখ: ${new Date(ord.date).toLocaleDateString('bn-BD')}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Add New Order Logic with Memo No
+        document.getElementById('addOrderForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const memoNo = document.getElementById('memoNo').value.trim();
+            const name = document.getElementById('custName').value.trim();
+            const phone = document.getElementById('custPhone').value.trim();
+            const printType = document.getElementById('printType').value;
+            const printDetails = document.getElementById('printDetails').value.trim();
+
+            const newOrder = {
+                id: "ORD-" + Math.floor(1000 + Math.random() * 9000),
+                memoNo: memoNo || ("MEMO-" + (1000 + orders.length + 1)),
+                customerName: name,
+                customerPhone: phone,
+                printType: printType,
+                printDetails: printDetails,
+                status: "গ্রহন করা হয়েছে",
+                date: new Date().toISOString()
+            };
+
+            orders.unshift(newOrder);
+            saveOrders();
+            renderOrders();
+
+            document.getElementById('addOrderForm').reset();
+            generateNextMemoNo();
+            document.getElementById('newOrderModal').classList.add('hidden');
+
+            showToast("নতুন ক্যাশ মেমো ও অর্ডার সেভ হয়েছে!", "success");
+        });
+
+        // UI Open Event Listeners
+        document.getElementById('openTrackerBtn').addEventListener('click', () => {
+            document.getElementById('trackerModal').classList.remove('hidden');
+        });
+        document.querySelectorAll('.closeTrackerModalBtn').forEach(b => {
+            b.addEventListener('click', () => document.getElementById('trackerModal').classList.add('hidden'));
+        });
+        document.querySelectorAll('.closeMemoModalBtn').forEach(b => {
+            b.addEventListener('click', () => document.getElementById('memoModal').classList.add('hidden'));
+        });
+    </script>
+</body>
+</html>
